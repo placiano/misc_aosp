@@ -28,7 +28,7 @@
 #
 #
 chown -h root.system /sys/devices/platform/msm_hsusb/gadget/wakeup
-chmod -h 220 /sys/devices/platform/msm_hsusb/gadget/wakeup
+chmod 220 /sys/devices/platform/msm_hsusb/gadget/wakeup
 
 #
 # Allow persistent usb charging disabling
@@ -70,10 +70,11 @@ if [ -d /sys/bus/esoc/devices ]; then
 for f in /sys/bus/esoc/devices/*; do
     if [ -d $f ]; then
         esoc_name=`cat $f/esoc_name`
-        if [ "$esoc_name" = "MDM9x25" -o "$esoc_name" = "MDM9x35" ]; then
-            esoc_link=`cat $f/esoc_link`
-            break
-        fi
+        case "$esoc_name" in
+            MDM*)
+                esoc_link=`cat $f/esoc_link`
+            ;;
+        esac
     fi
 done
 fi
@@ -113,14 +114,14 @@ baseband=`getprop ro.baseband`
 echo 1  > /sys/class/android_usb/f_mass_storage/lun/nofua
 usb_config=`getprop persist.sys.usb.config`
 case "$usb_config" in
-    "" | "none" | "adb") #USB persist config not set, select default configuration
+    "" | "adb") #USB persist config not set, select default configuration
       case "$esoc_link" in
           "HSIC")
               setprop persist.sys.usb.config diag,diag_mdm,serial_hsic,serial_tty,rmnet_hsic,mass_storage,adb
               setprop persist.rmnet.mux enabled
           ;;
           "HSIC+PCIe")
-              setprop persist.sys.usb.config diag,diag_mdm,serial_hsic,rmnet_qti_ether,mass_storage,adb
+              #setprop persist.sys.usb.config diag,diag_mdm,serial_hsic,rmnet_qti_ether,mass_storage,adb
           ;;
           "PCIe")
               setprop persist.sys.usb.config diag,diag_mdm,serial_tty,rmnet_qti_ether,mass_storage,adb
@@ -148,7 +149,7 @@ case "$usb_config" in
               ;;
           esac
              # setprop persist.sys.usb.config diag,serial_smd,serial_tty,rmnet_bam,mass_storage,adb
-	       setprop persist.sys.usb.config mtp,adb
+	       #setprop persist.sys.usb.config mtp,adb
           ;;
       esac
     ;;
@@ -165,7 +166,7 @@ case "$target" in
         echo ssusb > /sys/bus/platform/devices/usb_bam/enable
     ;;
     "apq8084")
-	if [ "$baseband" == "apq" ]; then
+	if [ "$baseband" == "apq" ] || [ "$esoc_link" == "PCIe" ]; then
 		echo "msm_hsic_host" > /sys/bus/platform/drivers/xhci_msm_hsic/unbind
 	fi
 
